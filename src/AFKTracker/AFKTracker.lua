@@ -135,8 +135,8 @@ local function sortPlayers(a, b)
     end
 end
 
--- List potential AFKers with aggregates (for /afkt list [limit])
-local function ListAFKers(limit)
+-- List potential AFKers with aggregates (for /afkt list [limit] [bg])
+local function ListAFKers(limit, useBG)
     local now = time()
     local players = {}
     for _, rec in ipairs(AFKTrackerDB.records) do
@@ -168,16 +168,27 @@ local function ListAFKers(limit)
             table.remove(sortedPlayers)
         end
     end
-    print("[AFKTracker] Potential AFKers (last 24 hours, sorted by most seen, then total honor" ..
-        (inBG and ", filtered to current AV match" or "") .. "):")
+    local channel = useBG and inBG and "INSTANCE_CHAT" or nil
+    local header = "[AFKTracker] Potential AFKers (last 24 hours, sorted by most seen, then total honor" ..
+        (inBG and ", filtered to current AV match" or "") .. "):"
+    if channel then
+        SendChatMessage(header, channel)
+    else
+        print(header)
+    end
     for _, entry in ipairs(sortedPlayers) do
         local aggs = entry.aggs
-        print("- " ..
+        local msg = "- " ..
             entry.name ..
             ": Seen " ..
             aggs.times_seen ..
             " times, average HKs: " ..
-            aggs.avg_hks .. ", average deaths: " .. aggs.avg_deaths .. ", total honor: " .. aggs.sum_honor .. ".")
+            aggs.avg_hks .. ", average deaths: " .. aggs.avg_deaths .. ", total honor: " .. aggs.sum_honor .. "."
+        if channel then
+            SendChatMessage(msg, channel)
+        else
+            print(msg)
+        end
     end
 end
 
@@ -205,7 +216,7 @@ local function AnnounceHistory()
     end
 end
 
--- Print current AV list to raid chat (for /afkt raidlist)
+-- Print current AV list to raid chat (for /afkt bgafkers)
 local function BGAfkers()
     if not inBG then
         print("[AFKTracker] Must be in AV to use bgafkers.")
@@ -313,8 +324,19 @@ local function AFKTHandler(msg)
     if subcmd == "announce" then
         AFKAnnounce()
     elseif subcmd == "list" then
-        local limit = tonumber(args[2])
-        ListAFKers(limit)
+        local limit = nil
+        local useBG = false
+        local arg2 = args[2] and args[2]:lower() or nil
+        local arg3 = args[3] and args[3]:lower() or nil
+        if arg2 == "bg" then
+            useBG = true
+        elseif arg2 then
+            limit = tonumber(arg2)
+            if arg3 == "bg" then
+                useBG = true
+            end
+        end
+        ListAFKers(limit, useBG)
     elseif subcmd == "history" then
         AnnounceHistory()
     elseif subcmd == "bgafkers" then
@@ -324,7 +346,8 @@ local function AFKTHandler(msg)
     else
         print("[AFKTracker] Usage: /afkt <command>")
         print(" - announce: Announce target as AFK (encourages reporting)")
-        print(" - list [limit]: List potential AFKers with aggregates from last 24 hours (optional limit for top N)")
+        print(
+        " - list [limit] [bg]: List potential AFKers with aggregates from last 24 hours (optional limit for top N, bg to display in instance chat if in AV)")
         print(" - history: Announce target's AFK evidence to bg chat")
         print(" - bgafkers: Print current AV suspects list to bg chat")
         print(" - clear: Clear the records list")
@@ -335,4 +358,4 @@ SLASH_AFKT1 = "/afkt"
 SlashCmdList["AFKT"] = AFKTHandler
 
 -- Load message
-print("[AFKTracker] Loaded successfully! Simplified version. Use /afkt <announce|list|history|raidlist|clear>.")
+print("[AFKTracker] Loaded successfully! Simplified version. Use /afkt <announce|list|history|bgafkers|clear>.")
