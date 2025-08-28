@@ -205,7 +205,7 @@ local function ListAFKers(limit, useBG)
             table.remove(sortedPlayers)
         end
     end
-    local channel = useBG and inBG and "INSTANCE_CHAT" or nil
+    local channel = (useBG and inBG) and "INSTANCE_CHAT" or nil
     local header = "[AFKTracker] Potential AFKers (last " ..
         AFKTrackerDB.config.historyExpireHours .. " hours, sorted by most seen, then total honor" ..
         (inBG and ", filtered to current AV match" or "") .. "):"
@@ -240,7 +240,7 @@ local function AnnounceHistory()
     local now = time()
     local aggs = GetAggregates(n, now)
     if aggs and aggs.afk_count > 0 then
-        local msg = "AFK evidence for " ..
+        local msg = "[AFKTracker] for " ..
             n ..
             ": Seen " ..
             aggs.times_seen ..
@@ -325,7 +325,7 @@ local function HandleConfig(args)
         end
         if foundKey then
             print("[AFKTracker] " .. foundKey .. ": " .. AFKTrackerDB.config[foundKey] .. " - " .. descriptions
-            [foundKey])
+                [foundKey])
         else
             print("[AFKTracker] Invalid key. Use /afkt config list to see available keys.")
         end
