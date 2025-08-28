@@ -216,56 +216,6 @@ local function AnnounceHistory()
     end
 end
 
--- Print current AV list to raid chat (for /afkt bgafkers)
-local function BGAfkers()
-    if not inBG then
-        print("[AFKTracker] Must be in AV to use bgafkers.")
-        return
-    end
-    local now = time()
-    local players = {}
-    for _, rec in ipairs(AFKTrackerDB.records) do
-        if now - rec.timestamp <= historyExpire and rec.hks == 0 and rec.deaths < deathThreshold and (rec.honor_gained or 0) >= honorThreshold then
-            players[rec.name] = true
-        end
-    end
-    if next(players) == nil then
-        -- local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
-        -- SendChatMessage("[AFKTracker] No potential AFKers in history.", channel)
-        print("[AFKTracker] No previously seen AFKers in this bg.")
-        return
-    end
-    local currentMembers = GetCurrentGroupMembers()
-    local sortedPlayers = {}
-    for name in pairs(players) do
-        if currentMembers[name] then
-            local aggs = GetAggregates(name, now)
-            if aggs and aggs.times_seen >= seenThreshold then
-                table.insert(sortedPlayers, { name = name, aggs = aggs })
-            end
-        end
-    end
-    if #sortedPlayers == 0 then
-        -- local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
-        -- SendChatMessage("[AFKTracker] 0 players matching criteria in current AV match.", channel)
-        print("[AFKTracker] No previously seen AFKers in this bg.")
-        return
-    end
-    table.sort(sortedPlayers, sortPlayers)
-    local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
-    SendChatMessage("[AFKTracker] Potential AFKers in this AV (seen in the last 24 hours):", channel)
-    for _, entry in ipairs(sortedPlayers) do
-        local aggs = entry.aggs
-        local msg = "- " ..
-            entry.name ..
-            ": Seen " ..
-            aggs.times_seen ..
-            ", avg HKs: " ..
-            aggs.avg_hks .. ", avg deaths: " .. aggs.avg_deaths .. ", total honor: " .. aggs.sum_honor .. "."
-        SendChatMessage(msg, channel)
-    end
-end
-
 -- Clear records list (for /afkt clear)
 local function ClearRecords()
     AFKTrackerDB.records = {}
@@ -339,17 +289,14 @@ local function AFKTHandler(msg)
         ListAFKers(limit, useBG)
     elseif subcmd == "history" then
         AnnounceHistory()
-    elseif subcmd == "bgafkers" then
-        BGAfkers()
     elseif subcmd == "clear" then
         ClearRecords()
     else
         print("[AFKTracker] Usage: /afkt <command>")
         print(" - announce: Announce target as AFK (encourages reporting)")
         print(
-        " - list [limit] [bg]: List potential AFKers with aggregates from last 24 hours (optional limit for top N, bg to display in instance chat if in AV)")
+            " - list [limit] [bg]: List potential AFKers with aggregates from last 24 hours (optional limit for top N, bg to display in bg chat if in AV)")
         print(" - history: Announce target's AFK evidence to bg chat")
-        print(" - bgafkers: Print current AV suspects list to bg chat")
         print(" - clear: Clear the records list")
     end
 end
@@ -358,4 +305,4 @@ SLASH_AFKT1 = "/afkt"
 SlashCmdList["AFKT"] = AFKTHandler
 
 -- Load message
-print("[AFKTracker] Loaded successfully! Simplified version. Use /afkt <announce|list|history|bgafkers|clear>.")
+print("[AFKTracker] Loaded successfully! Simplified version. Use /afkt <announce|list|history|clear>.")
