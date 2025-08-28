@@ -127,12 +127,20 @@ local function GetCurrentGroupMembers()
     return members
 end
 
+local function sortPlayers(a, b)
+    if a.aggs.times_seen ~= b.aggs.times_seen then
+        return a.aggs.times_seen > b.aggs.times_seen -- Most seen first (descending)
+    else
+        return a.aggs.sum_honor > b.aggs.sum_honor   -- Then highest honor first (descending)
+    end
+end
+
 -- List potential AFKers with aggregates (for /afkt list [limit])
 local function ListAFKers(limit)
     local now = time()
     local players = {}
     for _, rec in ipairs(AFKTrackerDB.records) do
-        if now - rec.timestamp <= historyExpire and (rec.seen or 0) > seenThreshold and rec.hks == 0 and rec.deaths < deathThreshold and (rec.honor_gained or 0) >= honorThreshold then
+        if now - rec.timestamp <= historyExpire and rec.hks == 0 and rec.deaths < deathThreshold and (rec.honor_gained or 0) >= honorThreshold then
             players[rec.name] = true
         end
     end
@@ -154,19 +162,13 @@ local function ListAFKers(limit)
         print("[AFKTracker] 0 players matching criteria in current AV match.")
         return
     end
-    table.sort(sortedPlayers, function(a, b)
-        if a.aggs.times_seen ~= b.aggs.times_seen then
-            return a.aggs.times_seen > b.aggs.times_seen -- Most seen first (descending)
-        else
-            return a.aggs.sum_honor < b.aggs.sum_honor   -- Then least honor first (ascending)
-        end
-    end)
+    table.sort(sortedPlayers, sortPlayers)
     if limit and limit > 0 then
         while #sortedPlayers > limit do
             table.remove(sortedPlayers)
         end
     end
-    print("[AFKTracker] Potential AFKers (last 24 hours, sorted by most seen desc, then total honor asc" ..
+    print("[AFKTracker] Potential AFKers (last 24 hours, sorted by most seen, then total honor" ..
         (inBG and ", filtered to current AV match" or "") .. "):")
     for _, entry in ipairs(sortedPlayers) do
         local aggs = entry.aggs
@@ -212,7 +214,7 @@ local function BGAfkers()
     local now = time()
     local players = {}
     for _, rec in ipairs(AFKTrackerDB.records) do
-        if now - rec.timestamp <= historyExpire and (rec.seen or 0) >= seenThreshold and rec.hks == 0 and rec.deaths < deathThreshold and (rec.honor_gained or 0) >= honorThreshold then
+        if now - rec.timestamp <= historyExpire and rec.hks == 0 and rec.deaths < deathThreshold and (rec.honor_gained or 0) >= honorThreshold then
             players[rec.name] = true
         end
     end
@@ -227,23 +229,18 @@ local function BGAfkers()
     for name in pairs(players) do
         if currentMembers[name] then
             local aggs = GetAggregates(name, now)
-            if aggs then
+            if aggs and aggs.times_seen >= seenThreshold then
                 table.insert(sortedPlayers, { name = name, aggs = aggs })
             end
         end
     end
     if #sortedPlayers == 0 then
-        local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
-        SendChatMessage("[AFKTracker] 0 players matching criteria in current AV match.", channel)
+        -- local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
+        -- SendChatMessage("[AFKTracker] 0 players matching criteria in current AV match.", channel)
+        print("[AFKTracker] No previously seen AFKers in this bg.")
         return
     end
-    table.sort(sortedPlayers, function(a, b)
-        if a.aggs.times_seen ~= b.aggs.times_seen then
-            return a.aggs.times_seen > b.aggs.times_seen
-        else
-            return a.aggs.sum_honor < b.aggs.sum_honor
-        end
-    end)
+    table.sort(sortedPlayers, sortPlayers)
     local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
     SendChatMessage("[AFKTracker] Potential AFKers in this AV (seen in the last 24 hours):", channel)
     for _, entry in ipairs(sortedPlayers) do
