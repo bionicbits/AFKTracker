@@ -1,6 +1,6 @@
 ## Interface: 11500
 ## Title: AFK Tracker (AV Only)
-## Version: 1.0
+## Version: 1.0.1
 ## Notes: Tracks and announces potential AFKers in Alterac Valley based on stats. User-friendly with options panel and minimap button.
 ## Author: BionicBits
 ## SavedVariables: AFKTrackerDB
