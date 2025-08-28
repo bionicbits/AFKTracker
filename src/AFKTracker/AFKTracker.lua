@@ -7,6 +7,7 @@ local historyExpire = 24 * 3600 -- 24 hours in seconds
 local deathThreshold = 2        -- Number of deaths to not be evaluated AFK
 local honorThreshold = 1386     -- Min Honor earned to be evaluated for AFK
 local seenThreshold = 2         -- Number of times previously seen AFK to print to bg chat
+local redeemThreshold = 2       -- Number of HKs in a match to redeem and be removed from tracking list
 local bgZone = "Alterac Valley"
 local inBG = false
 
@@ -69,6 +70,23 @@ function frame:RecordStatsAtEnd()
                         name .. " (0 HKs, <3 deaths, " .. (honorGained or 0) .. " honor, no objectives)")
                 else
                     print("[AFKTracker] Debug: Skipped " .. (name or "unknown") .. " - criteria not met")
+                end
+
+                -- Check for redemption
+                if name and ((honorableKills >= redeemThreshold) or (objectives > 0)) then
+                    local removed = false
+                    for j = #AFKTrackerDB.records, 1, -1 do
+                        if AFKTrackerDB.records[j].name == name then
+                            table.remove(AFKTrackerDB.records, j)
+                            removed = true
+                        end
+                    end
+                    if removed then
+                        print("[AFKTracker] Redeemed: " ..
+                            name ..
+                            " with " ..
+                            honorableKills .. " HKs and/or " .. objectives .. " objectives, removed from tracking list.")
+                    end
                 end
             end
         end
@@ -153,7 +171,7 @@ local function ListAFKers(limit, useBG)
     for name in pairs(players) do
         if not currentMembers or currentMembers[name] then
             local aggs = GetAggregates(name, now)
-            if aggs then
+            if aggs and aggs.times_seen >= seenThreshold then
                 table.insert(sortedPlayers, { name = name, aggs = aggs })
             end
         end
