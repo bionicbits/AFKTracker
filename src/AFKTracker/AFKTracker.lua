@@ -3,13 +3,16 @@ AFKTrackerDB = AFKTrackerDB or { records = {} }
 
 local frame = CreateFrame("Frame")
 local delayFrame = CreateFrame("Frame")
-local historyExpire = 24 * 3600 -- 24 hours in seconds
-local deathThreshold = 2        -- Number of deaths to not be evaluated AFK
-local honorThreshold = 1386     -- Min Honor earned to be evaluated for AFK
-local seenThreshold = 2         -- Number of times previously seen AFK to print to bg chat
-local redeemThreshold = 2       -- Number of HKs in a match to redeem and be removed from tracking list
 local bgZone = "Alterac Valley"
 local inBG = false
+
+local descriptions = {
+    deathThreshold = "Number of deaths below which a player is considered AFK (e.g., deaths < this value)",
+    honorThreshold = "Minimum honor gained to consider a player for AFK tracking",
+    seenThreshold = "Minimum number of times seen AFK to include in lists or announcements",
+    redeemThreshold = "Number of honorable kills in a single match to remove from tracking",
+    historyExpireHours = "Hours after which AFK records expire"
+}
 
 -- Register events at load
 frame:RegisterEvent("PLAYER_LOGIN")
@@ -18,7 +21,21 @@ frame:RegisterEvent("UPDATE_BATTLEFIELD_SCORE")
 
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
+        AFKTrackerDB.config = AFKTrackerDB.config or {}
+        local defaults = {
+            deathThreshold = 2,
+            honorThreshold = 1386,
+            seenThreshold = 2,
+            redeemThreshold = 1,
+            historyExpireHours = 24
+        }
+        for k, v in pairs(defaults) do
+            if AFKTrackerDB.config[k] == nil then
+                AFKTrackerDB.config[k] = v
+            end
+        end
         local now = time()
+        local historyExpire = AFKTrackerDB.config.historyExpireHours * 3600
         for i = #AFKTrackerDB.records, 1, -1 do
             if now - AFKTrackerDB.records[i].timestamp > historyExpire then
                 table.remove(AFKTrackerDB.records, i)
@@ -58,7 +75,7 @@ function frame:RecordStatsAtEnd()
                     GetBattlefieldScore(i)
                 local objectives = (towersAssaulted or 0) + (towersDefended or 0) + (gravesAssaulted or 0) +
                     (gravesDefended or 0) + (minesCaptured or 0) + (leadersKilled or 0) + (secondaryObjectives or 0)
-                if name and honorableKills == 0 and deaths < deathThreshold and (honorGained or 0) >= honorThreshold and objectives == 0 then
+                if name and honorableKills == 0 and deaths < AFKTrackerDB.config.deathThreshold and (honorGained or 0) >= AFKTrackerDB.config.honorThreshold and objectives == 0 then
                     table.insert(AFKTrackerDB.records, {
                         name = name,
                         timestamp = time(),
@@ -67,13 +84,16 @@ function frame:RecordStatsAtEnd()
                         honor_gained = honorGained or 0
                     })
                     print("[AFKTracker] Recorded: " ..
-                        name .. " (0 HKs, <3 deaths, " .. (honorGained or 0) .. " honor, no objectives)")
+                        name ..
+                        " (0 HKs, <" ..
+                        AFKTrackerDB.config.deathThreshold ..
+                        " deaths, " .. (honorGained or 0) .. " honor, no objectives)")
                 else
                     print("[AFKTracker] Debug: Skipped " .. (name or "unknown") .. " - criteria not met")
                 end
 
                 -- Check for redemption
-                if name and ((honorableKills >= redeemThreshold) or (objectives > 0)) then
+                if name and honorableKills >= AFKTrackerDB.config.redeemThreshold then
                     local removed = false
                     for j = #AFKTrackerDB.records, 1, -1 do
                         if AFKTrackerDB.records[j].name == name then
@@ -83,9 +103,7 @@ function frame:RecordStatsAtEnd()
                     end
                     if removed then
                         print("[AFKTracker] Redeemed: " ..
-                            name ..
-                            " with " ..
-                            honorableKills .. " HKs and/or " .. objectives .. " objectives, removed from tracking list.")
+                            name .. " with " .. honorableKills .. " HKs, removed from tracking list.")
                     end
                 end
             end
@@ -95,6 +113,7 @@ end
 
 -- Simplified aggregates (no spawn/idle)
 local function GetAggregates(name, now)
+    local historyExpire = AFKTrackerDB.config.historyExpireHours * 3600
     local times_seen = 0
     local sum_hks = 0
     local sum_deaths = 0
@@ -106,7 +125,7 @@ local function GetAggregates(name, now)
             sum_hks = sum_hks + rec.hks
             sum_deaths = sum_deaths + rec.deaths
             sum_honor = sum_honor + (rec.honor_gained or 0)
-            if rec.hks == 0 and rec.deaths < 3 and (rec.honor_gained or 0) >= 1500 then
+            if rec.hks == 0 and rec.deaths < AFKTrackerDB.config.deathThreshold and (rec.honor_gained or 0) >= AFKTrackerDB.config.honorThreshold then
                 afk_count = afk_count + 1
             end
         end
@@ -119,8 +138,7 @@ local function GetAggregates(name, now)
         avg_hks = avg_hks,
         avg_deaths = avg_deaths,
         sum_honor = sum_honor,
-        afk_count =
-            afk_count
+        afk_count = afk_count
     }
 end
 
@@ -156,9 +174,10 @@ end
 -- List potential AFKers with aggregates (for /afkt list [limit] [bg])
 local function ListAFKers(limit, useBG)
     local now = time()
+    local historyExpire = AFKTrackerDB.config.historyExpireHours * 3600
     local players = {}
     for _, rec in ipairs(AFKTrackerDB.records) do
-        if now - rec.timestamp <= historyExpire and rec.hks == 0 and rec.deaths < deathThreshold and (rec.honor_gained or 0) >= honorThreshold then
+        if now - rec.timestamp <= historyExpire and rec.hks == 0 and rec.deaths < AFKTrackerDB.config.deathThreshold and (rec.honor_gained or 0) >= AFKTrackerDB.config.honorThreshold then
             players[rec.name] = true
         end
     end
@@ -171,7 +190,7 @@ local function ListAFKers(limit, useBG)
     for name in pairs(players) do
         if not currentMembers or currentMembers[name] then
             local aggs = GetAggregates(name, now)
-            if aggs and aggs.times_seen >= seenThreshold then
+            if aggs and aggs.afk_count >= AFKTrackerDB.config.seenThreshold then
                 table.insert(sortedPlayers, { name = name, aggs = aggs })
             end
         end
@@ -187,7 +206,8 @@ local function ListAFKers(limit, useBG)
         end
     end
     local channel = useBG and inBG and "INSTANCE_CHAT" or nil
-    local header = "[AFKTracker] Potential AFKers (last 24 hours, sorted by most seen, then total honor" ..
+    local header = "[AFKTracker] Potential AFKers (last " ..
+        AFKTrackerDB.config.historyExpireHours .. " hours, sorted by most seen, then total honor" ..
         (inBG and ", filtered to current AV match" or "") .. "):"
     if channel then
         SendChatMessage(header, channel)
@@ -224,7 +244,7 @@ local function AnnounceHistory()
             n ..
             ": Seen " ..
             aggs.times_seen ..
-            " times in AV last 24h, average HKs: " ..
+            " times in AV last " .. AFKTrackerDB.config.historyExpireHours .. "h, average HKs: " ..
             aggs.avg_hks .. ", average deaths: " .. aggs.avg_deaths .. ", total honor: " .. aggs.sum_honor .. "."
         local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
         SendChatMessage(msg, channel)
@@ -282,20 +302,72 @@ local function AFKAnnounce()
     print("[AFKTracker] Message sent: " .. msg)
 end
 
+-- Config handler
+local function HandleConfig(args)
+    local configCmd = string.lower(args[2] or "list")
+    if configCmd == "list" then
+        print("[AFKTracker] Current configuration:")
+        for k, desc in pairs(descriptions) do
+            print(" - " .. k .. ": " .. AFKTrackerDB.config[k] .. " - " .. desc)
+        end
+    elseif configCmd == "get" then
+        local inputKey = string.lower(args[3] or "")
+        if inputKey == "" then
+            print("[AFKTracker] Invalid key. Use /afkt config list to see available keys.")
+            return
+        end
+        local foundKey = nil
+        for k in pairs(descriptions) do
+            if string.lower(k) == inputKey then
+                foundKey = k
+                break
+            end
+        end
+        if foundKey then
+            print("[AFKTracker] " .. foundKey .. ": " .. AFKTrackerDB.config[foundKey] .. " - " .. descriptions
+            [foundKey])
+        else
+            print("[AFKTracker] Invalid key. Use /afkt config list to see available keys.")
+        end
+    elseif configCmd == "set" then
+        local inputKey = string.lower(args[3] or "")
+        local value = tonumber(args[4])
+        if inputKey == "" or not value or value <= 0 then
+            print("[AFKTracker] Invalid key or value. Value must be a positive number.")
+            return
+        end
+        local foundKey = nil
+        for k in pairs(descriptions) do
+            if string.lower(k) == inputKey then
+                foundKey = k
+                break
+            end
+        end
+        if foundKey then
+            AFKTrackerDB.config[foundKey] = value
+            print("[AFKTracker] Set " .. foundKey .. " to " .. value)
+        else
+            print("[AFKTracker] Invalid key. Use /afkt config list to see available keys.")
+        end
+    else
+        print("[AFKTracker] Invalid config command. Use list, get <key>, or set <key> <value>.")
+    end
+end
+
 -- Unified slash command handler
 local function AFKTHandler(msg)
     local args = {}
     for word in msg:gmatch("%S+") do
-        table.insert(args, word:lower())
+        table.insert(args, word)
     end
-    local subcmd = args[1] or ""
+    local subcmd = string.lower(args[1] or "")
     if subcmd == "announce" then
         AFKAnnounce()
     elseif subcmd == "list" then
         local limit = nil
         local useBG = false
-        local arg2 = args[2] and args[2]:lower() or nil
-        local arg3 = args[3] and args[3]:lower() or nil
+        local arg2 = args[2] and string.lower(args[2]) or nil
+        local arg3 = args[3] and string.lower(args[3]) or nil
         if arg2 == "bg" then
             useBG = true
         elseif arg2 then
@@ -309,6 +381,8 @@ local function AFKTHandler(msg)
         AnnounceHistory()
     elseif subcmd == "clear" then
         ClearRecords()
+    elseif subcmd == "config" then
+        HandleConfig(args)
     else
         print("[AFKTracker] Usage: /afkt <command>")
         print(" - announce: Announce target as AFK (encourages reporting)")
@@ -316,6 +390,7 @@ local function AFKTHandler(msg)
             " - list [limit] [bg]: List potential AFKers with aggregates from last 24 hours (optional limit for top N, bg to display in bg chat if in AV)")
         print(" - history: Announce target's AFK evidence to bg chat")
         print(" - clear: Clear the records list")
+        print(" - config [list|get <key>|set <key> <value>]: Manage configuration thresholds")
     end
 end
 
@@ -323,4 +398,4 @@ SLASH_AFKT1 = "/afkt"
 SlashCmdList["AFKT"] = AFKTHandler
 
 -- Load message
-print("[AFKTracker] Loaded successfully! Simplified version. Use /afkt <announce|list|history|clear>.")
+print("[AFKTracker] Loaded successfully! Simplified version. Use /afkt <announce|list|history|clear|config>.")
