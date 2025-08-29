@@ -207,7 +207,7 @@ local function ListAFKers(limit, useBG)
     end
     local channel = (useBG and inBG) and "INSTANCE_CHAT" or nil
     local header = "[AFKTracker] Potential AFKers (last " ..
-        AFKTrackerDB.config.historyExpireHours .. " hours, sorted by most seen, then total honor" ..
+        AFKTrackerDB.config.historyExpireHours .. " hours, " ..
         (inBG and ", filtered to current AV match" or "") .. "):"
     if channel then
         SendChatMessage(header, channel)
@@ -220,8 +220,9 @@ local function ListAFKers(limit, useBG)
             entry.name ..
             ": Seen " ..
             aggs.times_seen ..
-            " times, average HKs: " ..
-            aggs.avg_hks .. ", average deaths: " .. aggs.avg_deaths .. ", total honor: " .. aggs.sum_honor .. "."
+            " times, avg HKs: " ..
+            aggs.avg_hks ..
+            ", avg deaths: " .. aggs.avg_deaths .. ", total objectives: 0, total honor: " .. aggs.sum_honor .. "."
         if channel then
             SendChatMessage(msg, channel)
         else
@@ -244,8 +245,9 @@ local function AnnounceHistory()
             n ..
             ": Seen " ..
             aggs.times_seen ..
-            " times in AV last " .. AFKTrackerDB.config.historyExpireHours .. "h, average HKs: " ..
-            aggs.avg_hks .. ", average deaths: " .. aggs.avg_deaths .. ", total honor: " .. aggs.sum_honor .. "."
+            " times in AV last " .. AFKTrackerDB.config.historyExpireHours .. "h, avg HKs: " ..
+            aggs.avg_hks ..
+            ", avg deaths: " .. aggs.avg_deaths .. ", total objectives: 0, total honor: " .. aggs.sum_honor .. "."
         local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
         SendChatMessage(msg, channel)
         print("[AFKTracker] Announced history for " .. n .. " to " .. channel .. " chat.")
