@@ -1,4 +1,4 @@
-# AFKTracker
+# AFK Tracker
 
 **AFKTracker** is a lightweight World of Warcraft Classic Era addon designed to help identify and track potential AFK (Away From Keyboard) players in Alterac Valley (AV) battlegrounds. It monitors player performance at the end of each AV match, recording those who appear to be leeching honor without contributing (e.g., 0 honorable kills, minimal deaths, no objectives completed, but still earning honor). The addon provides tools to list suspects, announce histories, and manage a local database of records. It's particularly useful for raid leaders or groups frustrated with AFK farmers in AV.
 
@@ -34,7 +34,7 @@ This addon is inspired by community efforts to promote fair play in battleground
    - `/afkt announce` to report a targeted player as AFK (with group info if in raid).
 7. **Configuration**: Adjust thresholds anytime with `/afkt config set <key> <value>` (e.g., `/afkt config set redeemThreshold 15`).
 
-The addon only tracks data from matches you're in, ensuring it's based on your direct observations. It doesn't detect AFK in real-time during the match—only at the end based on final stats.
+The addon only tracks data from matches you're in, ensuring it's based on your direct observations. It doesn't detect AFK in real-time during the match—only at the end based on final stats. In a BG it will report players level **60** and above for potential AFKs (lower levels often doing quests or grinding mobs).
 
 ## Installation
 
