@@ -156,8 +156,9 @@ local function GetCurrentGroupMembers()
     for i = 1, numMembers do
         local unit = prefix .. i
         local name = UnitName(unit)
+        local level = UnitLevel(unit)
         if name then
-            members[name] = true
+            members[name] = level
         end
     end
     return members
@@ -188,7 +189,7 @@ local function ListAFKers(limit, useBG)
     local currentMembers = inBG and GetCurrentGroupMembers() or nil
     local sortedPlayers = {}
     for name in pairs(players) do
-        if not currentMembers or currentMembers[name] then
+        if not currentMembers or (currentMembers[name] and currentMembers[name] >= 60) then
             local aggs = GetAggregates(name, now)
             if aggs and aggs.afk_count >= AFKTrackerDB.config.seenThreshold then
                 table.insert(sortedPlayers, { name = name, aggs = aggs })
