@@ -13,7 +13,7 @@ This addon is inspired by community efforts to promote fair play in battleground
 - **Configurable Thresholds**: Customize criteria like death limits, honor minimums, expiration time, and more via in-game commands.
 - **Chat Integration**: Announce AFK evidence to instance/raid chat or list suspects in BG chat.
 - **Local Storage**: Uses SavedVariables for persistence; no server-side data or external dependencies.
-- **Debug Logging**: Optional debug prints for troubleshooting (visible in chat).
+- **Debug Logging**: Configurable debug mode for troubleshooting (disabled by default, can be enabled via config).
 
 ## How It Works
 
@@ -53,7 +53,7 @@ No additional libraries or addons required. Compatible with WoW Classic Era (tes
 - `/afkt clear`: Clears all recorded data.
 - `/afkt config`: Shows current configuration values and descriptions.
 - `/afkt config get <key>`: Gets the value and description of a specific config key (e.g., `deathThreshold`).
-- `/afkt config set <key> <value>`: Sets a config key to a new positive number (e.g., `/afkt config set honorThreshold 1500`).
+- `/afkt config set <key> <value>`: Sets a config key to a new value (e.g., `/afkt config set honorThreshold 1500`). For the `debug` key, use 0 (false) or 1 (true).
 
 Available config keys:
 - `deathThreshold`: Number of deaths below which a player is considered AFK (default: 2).
@@ -61,11 +61,14 @@ Available config keys:
 - `seenThreshold`: Minimum number of times seen AFK to include in lists or announcements (default: 2).
 - `redeemThreshold`: Number of honorable kills in a single match to remove from tracking (default: 1).
 - `historyExpireHours`: Hours after which AFK records expire (default: 24).
+- `debug`: Enable or disable debug messages (default: false). Use 0 to disable, 1 to enable.
 
 ## Configuration Examples
 
 - To make tracking stricter (require more honor): `/afkt config set honorThreshold 2000`
 - To forgive players faster: `/afkt config set redeemThreshold 5`
+- To enable debug messages: `/afkt config set debug 1`
+- To disable debug messages: `/afkt config set debug 0`
 - View all settings: `/afkt config`
 
 Changes persist across sessions and are per-character.
@@ -76,7 +79,7 @@ Changes persist across sessions and are per-character.
 - **False Positives**: Players who die early or play defensively might trigger tracking—use redemption to clear good players.
 - **Privacy**: All data is local; nothing is shared or uploaded.
 - **Compatibility**: Works in Classic Era; not tested in retail WoW.
-- **Debug Mode**: Prints debug info to chat—comment out `print` statements in the code if unwanted.
+- **Debug Mode**: Debug messages are disabled by default. Enable with `/afkt config set debug 1` for troubleshooting.
 - **Customization**: Feel free to edit the Lua file for advanced tweaks (e.g., change bgZone to monitor other BGs).
 
 If you encounter issues, check your WoW logs or report on CurseForge/GitHub.

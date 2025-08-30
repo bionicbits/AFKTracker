@@ -11,8 +11,16 @@ local descriptions = {
     honorThreshold = "Minimum honor gained to consider a player for AFK tracking",
     seenThreshold = "Minimum number of times seen AFK to include in lists or announcements",
     redeemThreshold = "Number of honorable kills in a single match to remove from tracking",
-    historyExpireHours = "Hours after which AFK records expire"
+    historyExpireHours = "Hours after which AFK records expire",
+    debug = "Enable debug messages 1 enables, 0 disables (DEFAULT)"
 }
+
+-- Debug function
+local function Debug(msg)
+    if AFKTrackerDB.config and AFKTrackerDB.config.debug then
+        print("|cFF4A90E2[AFK Tracker]|r " .. msg)
+    end
+end
 
 -- Register events at load
 frame:RegisterEvent("PLAYER_LOGIN")
@@ -27,7 +35,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
             honorThreshold = 1386,
             seenThreshold = 2,
             redeemThreshold = 1,
-            historyExpireHours = 24
+            historyExpireHours = 24,
+            debug = false
         }
         for k, v in pairs(defaults) do
             if AFKTrackerDB.config[k] == nil then
@@ -41,21 +50,21 @@ frame:SetScript("OnEvent", function(self, event, ...)
                 table.remove(AFKTrackerDB.records, i)
             end
         end
-        print("[AFK Tracker] Loaded! " .. #AFKTrackerDB.records .. " records in history.")
+        print("|cFF4A90E2[AFK Tracker]|r Loaded! " .. #AFKTrackerDB.records .. " records in history.")
     elseif event == "ZONE_CHANGED_NEW_AREA" then
         local zone = GetZoneText()
         if zone == bgZone and not inBG then
             inBG = true
-            print("[AFK Tracker] Entered Alterac Valley. Starting tracking.")
+            Debug("Entered Alterac Valley. Starting tracking.")
         elseif zone ~= bgZone and inBG then
             inBG = false
-            print("[AFK Tracker] Left AV. Stopping tracking.")
+            Debug("Left AV. Stopping tracking.")
         end
     elseif event == "UPDATE_BATTLEFIELD_SCORE" then
         local winner = GetBattlefieldWinner()
-        print("[AFK Tracker] Debug: UPDATE_BATTLEFIELD_SCORE fired, winner = " .. tostring(winner))
+        Debug("UPDATE_BATTLEFIELD_SCORE fired, winner = " .. tostring(winner))
         if inBG and winner ~= nil then
-            print("[AFKTracker] Debug: BG end detected, recording stats.")
+            Debug("BG end detected, recording stats.")
             self:RecordStatsAtEnd()
         end
     end
@@ -69,7 +78,7 @@ function frame:RecordStatsAtEnd()
         if GetTime() - dfself.startTime >= 1 then
             dfself:SetScript("OnUpdate", nil)
             local numScores = GetNumBattlefieldScores()
-            print("[AFK Tracker] Debug: Scores after delay: " .. numScores)
+            Debug("Scores after delay: " .. numScores)
             for i = 1, numScores do
                 local name, killingBlows, honorableKills, deaths, honorGained, faction, race, class, classToken, damageDone, healingDone, bonusHonor, gravesAssaulted, gravesDefended, towersAssaulted, towersDefended, minesCaptured, leadersKilled, secondaryObjectives =
                     GetBattlefieldScore(i)
@@ -83,13 +92,13 @@ function frame:RecordStatsAtEnd()
                         deaths = deaths,
                         honor_gained = honorGained or 0
                     })
-                    print("[AFK Tracker] Recorded: " ..
+                    print("|cFF4A90E2[AFK Tracker]|r Recorded: " ..
                         name ..
                         " (0 HKs, <" ..
                         AFKTrackerDB.config.deathThreshold ..
                         " deaths, " .. (honorGained or 0) .. " honor, no objectives)")
                 else
-                    print("[AFK Tracker] Debug: Skipped " .. (name or "unknown") .. " - criteria not met")
+                    Debug("Skipped " .. (name or "unknown") .. " - criteria not met")
                 end
 
                 -- Check for redemption
@@ -102,7 +111,7 @@ function frame:RecordStatsAtEnd()
                         end
                     end
                     if removed then
-                        print("[AFK Tracker] Redeemed: " ..
+                        print("|cFF4A90E2[AFK Tracker]|r Redeemed: " ..
                             name .. " with " .. honorableKills .. " HKs, removed from tracking list.")
                     end
                 end
@@ -183,7 +192,7 @@ local function ListAFKers(limit, useBG)
         end
     end
     if next(players) == nil then
-        print("[AFK Tracker] No potential AFKers matching thresholds yet.")
+        print("|cFF4A90E2[AFK Tracker]|r No potential AFKers matching thresholds yet.")
         return
     end
     local currentMembers = inBG and GetCurrentGroupMembers() or nil
@@ -197,7 +206,7 @@ local function ListAFKers(limit, useBG)
         end
     end
     if #sortedPlayers == 0 then
-        print("[AFK Tracker] 0 players matching criteria in current AV match.")
+        print("|cFF4A90E2[AFK Tracker]|r 0 players matching criteria in current AV match.")
         return
     end
     table.sort(sortedPlayers, sortPlayers)
@@ -207,16 +216,18 @@ local function ListAFKers(limit, useBG)
         end
     end
     local channel = (useBG and inBG) and "INSTANCE_CHAT" or nil
-    local header = "[AFK Tracker] Potential AFKers (tracked last " ..
+    local header_plain = "[AFK Tracker] Potential AFKers (tracked last " ..
         AFKTrackerDB.config.historyExpireHours .. " hours):"
+    local header_colored = "|cFF4A90E2[AFK Tracker]|r Potential AFKers (tracked last |cFF4A90E2" ..
+        AFKTrackerDB.config.historyExpireHours .. "|r hours):"
     if channel then
-        SendChatMessage(header, channel)
+        SendChatMessage(header_plain, channel)
     else
-        print(header)
+        print(header_colored)
     end
     for _, entry in ipairs(sortedPlayers) do
         local aggs = entry.aggs
-        local msg = "- " ..
+        local msg_plain = "- " ..
             entry.name ..
             ": Seen " ..
             aggs.times_seen ..
@@ -224,9 +235,18 @@ local function ListAFKers(limit, useBG)
             aggs.avg_hks ..
             ", avg deaths: " .. aggs.avg_deaths .. ", total objectives: 0, total honor: " .. aggs.sum_honor .. "."
         if channel then
-            SendChatMessage(msg, channel)
+            SendChatMessage(msg_plain, channel)
         else
-            print(msg)
+            local msg_colored = "- |cFF00FF00" ..
+                entry.name ..
+                "|r: Seen |cFF4A90E2" ..
+                aggs.times_seen ..
+                "|r times, avg HKs: |cFF4A90E2" ..
+                aggs.avg_hks ..
+                "|r, avg deaths: |cFF4A90E2" ..
+                aggs.avg_deaths ..
+                "|r, total objectives: |cFF4A90E20|r, total honor: |cFF4A90E2" .. aggs.sum_honor .. "|r."
+            print(msg_colored)
         end
     end
 end
@@ -234,7 +254,7 @@ end
 -- Announce target's aggregates to raid chat (for /afkt history)
 local function AnnounceHistory()
     if not UnitExists("target") then
-        print("[AFK Tracker] Error: No target selected for history.")
+        print("|cFF4A90E2[AFK Tracker]|r Error: No target selected for history.")
         return
     end
     local n = UnitName("target")
@@ -250,29 +270,29 @@ local function AnnounceHistory()
             ", avg deaths: " .. aggs.avg_deaths .. ", total objectives: 0, total honor: " .. aggs.sum_honor .. "."
         local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
         SendChatMessage(msg, channel)
-        print("[AFK Tracker] Announced history for " .. n .. " to " .. channel .. " chat.")
+        Debug("Announced history for " .. n .. " to " .. channel .. " chat.")
     else
-        print("[AFK Tracker] No AFK history found for " .. n .. ".")
+        print("|cFF4A90E2[AFK Tracker]|r No AFK history found for " .. n .. ".")
     end
 end
 
 -- Clear records list (for /afkt clear)
 local function ClearRecords()
     AFKTrackerDB.records = {}
-    print("[AFK Tracker] Records list cleared.")
+    print("|cFF4A90E2[AFK Tracker]|r Records list cleared.")
 end
 
 -- Announce function (for /afkt announce)
 local function AFKAnnounce()
-    print("[AFK Tracker] Attempting to announce...")
+    Debug("Attempting to announce...")
     if not UnitExists("target") then
-        print("[AFKTracker] Error: No target selected.")
+        Debug("Error: No target selected.")
         return
     end
     local n = UnitName("target")
     local c = select(1, UnitClass("target"))
     if not c then
-        print("[AFK Tracker] Error: Could not detect target's class.")
+        Debug("Error: Could not detect target's class.")
         return
     end
     local msg = "REPORT: " .. n .. " the " .. c .. " is AFK!"
@@ -282,10 +302,10 @@ local function AFKAnnounce()
         if subgroup then
             msg = msg .. " (Group " .. subgroup .. ")"
         else
-            print("[AFK Tracker] Debug: Target in raid but no subgroup detected.")
+            Debug("Target in raid but no subgroup detected.")
         end
     else
-        print("[AFK Tracker] Debug: Target not in raid (no group info added).")
+        Debug("Target not in raid (no group info added).")
     end
     local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
     local pindex = UnitInRaid("player")
@@ -293,29 +313,33 @@ local function AFKAnnounce()
         local _, prank = GetRaidRosterInfo(pindex)
         if prank >= 1 then
             channel = "RAID_WARNING"
-            print("[AFK Tracker] Debug: Using RAID_WARNING (you have permissions).")
+            Debug("Using RAID_WARNING (you have permissions).")
         else
-            print("[AFK Tracker] Debug: Using RAID (no leader/assist permissions).")
+            Debug("Using RAID (no leader/assist permissions).")
         end
     else
-        print("[AFK Tracker] Debug: Not in raid; falling back to RAID/party channel.")
+        Debug("Not in raid; falling back to RAID/party channel.")
     end
     SendChatMessage(msg, channel)
-    print("[AFK Tracker] Message sent: " .. msg)
+    print("|cFF4A90E2[AFK Tracker]|r Message sent: " .. msg)
 end
 
 -- Config handler
 local function HandleConfig(args)
     local configCmd = string.lower(args[2] or "list")
     if configCmd == "list" then
-        print("[AFK Tracker] Current configuration:")
+        print("|cFF4A90E2[AFK Tracker]|r Current configuration:")
         for k, desc in pairs(descriptions) do
-            print(" - " .. k .. ": " .. AFKTrackerDB.config[k] .. " - " .. desc)
+            local value = AFKTrackerDB.config[k]
+            if type(value) == "boolean" then
+                value = tostring(value)
+            end
+            print(" - |cFFFFD700" .. k .. "|r: |cFF4A90E2" .. value .. "|r - " .. desc)
         end
     elseif configCmd == "get" then
         local inputKey = string.lower(args[3] or "")
         if inputKey == "" then
-            print("[AFK Tracker] Invalid key. Use /afkt config list to see available keys.")
+            print("|cFF4A90E2[AFK Tracker]|r Invalid key. Use /afkt config list to see available keys.")
             return
         end
         local foundKey = nil
@@ -326,16 +350,29 @@ local function HandleConfig(args)
             end
         end
         if foundKey then
-            print("[AFK Tracker] " .. foundKey .. ": " .. AFKTrackerDB.config[foundKey] .. " - " .. descriptions
-                [foundKey])
+            local value = AFKTrackerDB.config[foundKey]
+            if type(value) == "boolean" then
+                value = tostring(value)
+            end
+            print("|cFF4A90E2[AFK Tracker]|r |cFFFFD700" ..
+                foundKey .. "|r: |cFF4A90E2" .. value .. "|r - " .. descriptions[foundKey])
         else
-            print("[AFK Tracker] Invalid key. Use /afkt config list to see available keys.")
+            print("|cFF4A90E2[AFK Tracker]|r Invalid key. Use /afkt config list to see available keys.")
         end
     elseif configCmd == "set" then
         local inputKey = string.lower(args[3] or "")
         local value = tonumber(args[4])
-        if inputKey == "" or not value or value <= 0 then
-            print("[AFK Tracker] Invalid key or value. Value must be a positive number.")
+        if inputKey == "" or value == nil then
+            print("|cFF4A90E2[AFK Tracker]|r Invalid key or value. Use /afkt config set <key> <value>.")
+            return
+        end
+        -- Allow 0 or 1 for debug option, positive numbers for others
+        if inputKey ~= "debug" and (not value or value <= 0) then
+            print("|cFF4A90E2[AFK Tracker]|r Invalid value. Value must be a positive number.")
+            return
+        end
+        if inputKey == "debug" and value ~= 0 and value ~= 1 then
+            print("|cFF4A90E2[AFK Tracker]|r Invalid value for debug. Use 0 (false) or 1 (true).")
             return
         end
         local foundKey = nil
@@ -346,13 +383,20 @@ local function HandleConfig(args)
             end
         end
         if foundKey then
-            AFKTrackerDB.config[foundKey] = value
-            print("[AFK Tracker] Set " .. foundKey .. " to " .. value)
+            -- Special handling for debug option
+            if foundKey == "debug" then
+                AFKTrackerDB.config[foundKey] = (value == 1)
+                print("|cFF4A90E2[AFK Tracker]|r Set |cFFFFD700" ..
+                    foundKey .. "|r to |cFF4A90E2" .. tostring(AFKTrackerDB.config[foundKey]) .. "|r")
+            else
+                AFKTrackerDB.config[foundKey] = value
+                print("|cFF4A90E2[AFK Tracker]|r Set |cFFFFD700" .. foundKey .. "|r to |cFF4A90E2" .. value .. "|r")
+            end
         else
-            print("[AFK Tracker] Invalid key. Use /afkt config list to see available keys.")
+            print("|cFF4A90E2[AFK Tracker]|r Invalid key. Use /afkt config list to see available keys.")
         end
     else
-        print("[AFK Tracker] Invalid config command. Use list, get <key>, or set <key> <value>.")
+        print("|cFF4A90E2[AFK Tracker]|r Invalid config command. Use list, get <key>, or set <key> <value>.")
     end
 end
 
@@ -386,13 +430,13 @@ local function AFKTHandler(msg)
     elseif subcmd == "config" then
         HandleConfig(args)
     else
-        print("[AFK Tracker] Usage: /afkt <command>")
-        print(" - announce: Announce target as AFK (encourages reporting)")
+        print("|cFF4A90E2[AFK Tracker]|r Usage: /afkt <command>")
+        print(" - |cFFFFD700announce|r: Announce target as AFK (encourages reporting)")
         print(
-            " - list [limit] [bg]: List potential AFKers with aggregates from last 24 hours (optional limit for top N, bg to display in bg chat if in AV)")
-        print(" - history: Announce target's AFK evidence to bg chat")
-        print(" - clear: Clear the records list")
-        print(" - config [list|get <key>|set <key> <value>]: Manage configuration thresholds")
+            " - |cFFFFD700list|r [limit] [bg]: List potential AFKers with aggregates from last 24 hours (optional limit for top N, bg to display in bg chat if in AV)")
+        print(" - |cFFFFD700history|r: Announce target's AFK evidence to bg chat")
+        print(" - |cFFFFD700clear|r: Clear the records list")
+        print(" - |cFFFFD700config|r [list|get <key>|set <key> <value>]: Manage configuration (use 0/1 for debug)")
     end
 end
 
@@ -400,4 +444,5 @@ SLASH_AFKT1 = "/afkt"
 SlashCmdList["AFKT"] = AFKTHandler
 
 -- Load message
-print("[AFK Tracker] Loaded successfully! Simplified version. Use /afkt <announce|list|history|clear|config>.")
+print(
+    "|cFF4A90E2[AFK Tracker]|r Loaded successfully! Simplified version. Use /afkt <announce|list|history|clear|config>.")
