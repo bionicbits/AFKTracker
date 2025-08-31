@@ -9,8 +9,9 @@ This addon is inspired by community efforts to promote fair play in battleground
 - **Automatic Tracking**: At the end of each AV match, scans the scoreboard for players meeting AFK criteria (0 HKs, low deaths, sufficient honor gained, no objectives).
 - **Redemption System**: If a tracked player achieves a configurable number of honorable kills (default: 10) in a future match, they are automatically removed from the tracking list.
 - **Aggregated Statistics**: View averages for HKs, deaths, and total honor across recorded matches.
+- **Graphical UI**: User-friendly settings window accessible via `/afkt ui` for easy configuration.
 - **Slash Commands**: Easy-to-use commands for listing suspects, announcing histories, clearing data, and configuring thresholds.
-- **Configurable Thresholds**: Customize criteria like death limits, honor minimums, expiration time, and more via in-game commands.
+- **Configurable Thresholds**: Customize criteria like death limits, honor minimums, expiration time, and more via the UI or in-game commands.
 - **Chat Integration**: Announce AFK evidence to instance/raid chat or list suspects in BG chat.
 - **Local Storage**: Uses SavedVariables for persistence; no server-side data or external dependencies.
 - **Debug Logging**: Configurable debug mode for troubleshooting (disabled by default, can be enabled via config).
@@ -47,29 +48,38 @@ No additional libraries or addons required. Compatible with WoW Classic Era (tes
 
 ## Commands
 
+- `/afkt ui` or `/afkt settings`: Opens the graphical settings window for easy configuration.
 - `/afkt announce`: Announces the targeted player as AFK to raid/instance chat (includes class and group if applicable). Requires target.
 - `/afkt list [limit] [bg]`: Lists potential AFKers from the last X hours, sorted by times seen and total honor. Optional `limit` for top N results; `bg` to print to instance chat (if in AV).
 - `/afkt history`: Announces the targeted player's AFK history/evidence to instance/raid chat. Requires target.
 - `/afkt clear`: Clears all recorded data.
 - `/afkt config`: Shows current configuration values and descriptions.
 - `/afkt config get <key>`: Gets the value and description of a specific config key (e.g., `deathThreshold`).
-- `/afkt config set <key> <value>`: Sets a config key to a new value (e.g., `/afkt config set honorThreshold 1500`). For the `debug` key, use 0 (false) or 1 (true).
+- `/afkt config set <key> <value>`: Sets a config key to a new value (e.g., `/afkt config set honorThreshold 1500`). Note: Debug mode can now be toggled via checkbox in the UI.
 
-Available config keys:
+Available config keys (can be configured via UI or commands):
 - `deathThreshold`: Number of deaths below which a player is considered AFK (default: 2).
 - `honorThreshold`: Minimum honor gained to consider a player for AFK tracking (default: 1386).
 - `seenThreshold`: Minimum number of times seen AFK to include in lists or announcements (default: 2).
 - `redeemThreshold`: Number of honorable kills in a single match to remove from tracking (default: 1).
 - `historyExpireHours`: Hours after which AFK records expire (default: 24).
-- `debug`: Enable or disable debug messages (default: false). Use 0 to disable, 1 to enable.
+- `debug`: Enable or disable debug messages (default: false). Can be toggled via checkbox in the UI or set via command.
 
 ## Configuration Examples
 
+Configuration can be done via the graphical UI (`/afkt ui`) or through commands:
+
+- Open settings window: `/afkt ui` or `/afkt settings`
 - To make tracking stricter (require more honor): `/afkt config set honorThreshold 2000`
 - To forgive players faster: `/afkt config set redeemThreshold 5`
-- To enable debug messages: `/afkt config set debug 1`
-- To disable debug messages: `/afkt config set debug 0`
 - View all settings: `/afkt config`
+
+The UI provides:
+- Input fields for all numeric thresholds
+- Checkbox for debug mode toggle
+- Reset Defaults button to restore original settings
+- Clear History button to remove all tracking records
+- Draggable window that remembers its position
 
 Changes persist across sessions and are per-character.
 

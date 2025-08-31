@@ -30,6 +30,7 @@ frame:RegisterEvent("UPDATE_BATTLEFIELD_SCORE")
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
         AFKTrackerDB.config = AFKTrackerDB.config or {}
+        AFKTrackerDB.ui = AFKTrackerDB.ui or {}
         local defaults = {
             deathThreshold = 2,
             honorThreshold = 1386,
@@ -429,6 +430,12 @@ local function AFKTHandler(msg)
         ClearRecords()
     elseif subcmd == "config" then
         HandleConfig(args)
+    elseif subcmd == "ui" or subcmd == "settings" then
+        if AFKTrackerUI then
+            AFKTrackerUI:ToggleSettingsFrame()
+        else
+            print("|cFF4A90E2[AFK Tracker]|r UI module not loaded.")
+        end
     else
         print("|cFF4A90E2[AFK Tracker]|r Usage: /afkt <command>")
         print(" - |cFFFFD700announce|r: Announce target as AFK (encourages reporting)")
@@ -436,7 +443,8 @@ local function AFKTHandler(msg)
             " - |cFFFFD700list|r [limit] [bg]: List potential AFKers with aggregates from last 24 hours (optional limit for top N, bg to display in bg chat if in AV)")
         print(" - |cFFFFD700history|r: Announce target's AFK evidence to bg chat")
         print(" - |cFFFFD700clear|r: Clear the records list")
-        print(" - |cFFFFD700config|r [list|get <key>|set <key> <value>]: Manage configuration (use 0/1 for debug)")
+        print(" - |cFFFFD700config|r [list|get <key>|set <key> <value>]: Manage configuration")
+        print(" - |cFFFFD700ui|r or |cFFFFD700settings|r: Toggle the settings window")
     end
 end
 
