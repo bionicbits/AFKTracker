@@ -436,6 +436,24 @@ local function AFKTHandler(msg)
         else
             print("|cFF4A90E2[AFK Tracker]|r UI module not loaded.")
         end
+    elseif subcmd == "battleui" then
+        local action = string.lower(args[2] or "show")
+        if AFKTrackerUI then
+            if action == "show" then
+                AFKTrackerUI:ShowBattleFrame()
+                print("|cFF4A90E2[AFK Tracker]|r Battle UI shown")
+            elseif action == "hide" then
+                AFKTrackerUI:HideBattleFrame()
+                print("|cFF4A90E2[AFK Tracker]|r Battle UI hidden")
+            elseif action == "reset" then
+                AFKTrackerUI:ResetBattlePosition()
+                print("|cFF4A90E2[AFK Tracker]|r Battle UI position reset to default")
+            else
+                print("|cFF4A90E2[AFK Tracker]|r Usage: /afkt battleui [show|hide|reset]")
+            end
+        else
+            print("|cFF4A90E2[AFK Tracker]|r UI module not loaded.")
+        end
     else
         print("|cFF4A90E2[AFK Tracker]|r Usage: /afkt <command>")
         print(" - |cFFFFD700announce|r: Announce target as AFK (encourages reporting)")
@@ -445,6 +463,8 @@ local function AFKTHandler(msg)
         print(" - |cFFFFD700clear|r: Clear the records list")
         print(" - |cFFFFD700config|r [list|get <key>|set <key> <value>]: Manage configuration")
         print(" - |cFFFFD700ui|r or |cFFFFD700settings|r: Toggle the settings window")
+        print(
+        " - |cFFFFD700battleui|r [show|hide|reset]: Show, hide, or reset position of the battle UI (auto-shows in AV if enabled)")
     end
 end
 
