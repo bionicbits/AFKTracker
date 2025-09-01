@@ -425,32 +425,67 @@ local function CreateBattleFrame()
     end)
 
     -- Announce button
-    local announceBtn = CreateFrame("Button", nil, f)
-    announceBtn:SetSize(60, 20)
-    announceBtn:SetPoint("TOPRIGHT", -5, -25)
+    f.announceBtn = CreateFrame("Button", nil, f)
+    f.announceBtn:SetSize(60, 20)
+    f.announceBtn:SetPoint("TOPRIGHT", -5, -25)
 
-    announceBtn.bg = announceBtn:CreateTexture(nil, "BACKGROUND")
-    announceBtn.bg:SetAllPoints()
-    announceBtn.bg:SetColorTexture(0.2, 0.2, 0.2, 1)
+    f.announceBtn.bg = f.announceBtn:CreateTexture(nil, "BACKGROUND")
+    f.announceBtn.bg:SetAllPoints()
+    f.announceBtn.bg:SetColorTexture(0.2, 0.2, 0.2, 1)
 
-    announceBtn:SetNormalFontObject("GameFontNormalSmall")
-    announceBtn:SetHighlightFontObject("GameFontHighlightSmall")
-    announceBtn:SetText("Announce")
+    f.announceBtn:SetNormalFontObject("GameFontNormalSmall")
+    f.announceBtn:SetHighlightFontObject("GameFontHighlightSmall")
+    f.announceBtn:SetText("Announce")
 
-    announceBtn:SetScript("OnEnter", function(self)
-        self.bg:SetColorTexture(0.3, 0.3, 0.3, 1)
+    f.announceBtn:SetScript("OnEnter", function(self)
+        if self:IsEnabled() then
+            self.bg:SetColorTexture(0.3, 0.3, 0.3, 1)
+        end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:SetText("Announce target as AFK")
         GameTooltip:Show()
     end)
-    announceBtn:SetScript("OnLeave", function(self)
-        self.bg:SetColorTexture(0.2, 0.2, 0.2, 1)
+    f.announceBtn:SetScript("OnLeave", function(self)
+        if self:IsEnabled() then
+            self.bg:SetColorTexture(0.2, 0.2, 0.2, 1)
+        end
         GameTooltip:Hide()
     end)
-    announceBtn:SetScript("OnClick", function()
+    f.announceBtn:SetScript("OnClick", function()
         -- Simulate /afkt announce command
         SlashCmdList["AFKT"]("announce")
     end)
+
+    -- Function to update the announce button's state
+    function f:UpdateAnnounceButtonState()
+        local targetExists = UnitExists("target") and UnitIsPlayer("target") and not UnitIsUnit("player", "target")
+        local targetInGroup = targetExists and (UnitInRaid("target") or UnitInParty("target"))
+
+        if targetExists and targetInGroup then
+            self.announceBtn:Enable()
+            self.announceBtn.bg:SetColorTexture(0.2, 0.2, 0.2, 1)
+            self.announceBtn:SetNormalFontObject("GameFontNormalSmall")
+        else
+            self.announceBtn:Disable()
+            self.announceBtn.bg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
+            self.announceBtn:SetNormalFontObject("GameFontDisableSmall")
+        end
+    end
+
+    -- Update button state on relevant events
+    f:RegisterEvent("PLAYER_TARGET_CHANGED")
+    f:RegisterEvent("GROUP_ROSTER_UPDATE")
+    f:SetScript("OnEvent", function(self, event, ...)
+        if event == "PLAYER_TARGET_CHANGED" or event == "GROUP_ROSTER_UPDATE" then
+            self:UpdateAnnounceButtonState()
+        end
+    end)
+    f:SetScript("OnShow", function(self)
+        self:UpdateAnnounceButtonState()
+    end)
+
+    -- Set initial state
+    f:UpdateAnnounceButtonState()
 
     battleFrame = f
     return f
