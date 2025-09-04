@@ -327,6 +327,12 @@ end
 -- Announce function (for /afkt announce)
 local function AFKAnnounce()
     Debug("Attempting to announce...")
+    -- Check if player is in a raid
+    if not UnitInRaid("player") then
+        Debug("Error: You must be in a raid to announce AFKers.")
+        print("|cFF4A90E2[AFK Tracker]|r You must be in a raid to announce AFKers.")
+        return
+    end
     if not UnitExists("target") then
         Debug("Error: No target selected.")
         return
@@ -337,18 +343,29 @@ local function AFKAnnounce()
         Debug("Error: Could not detect target's class.")
         return
     end
-    local msg = "REPORT: " .. n .. " the " .. c .. " is AFK!"
+
+    -- Get custom message template or use default
+    local template = AFKTrackerDB.config.announceMessage or "REPORT: {name} the {class} is AFK! (Group {group})"
+
+    -- Prepare group number
+    local groupNum = ""
     local tindex = UnitInRaid("target")
     if tindex then
         local _, _, subgroup = GetRaidRosterInfo(tindex)
         if subgroup then
-            msg = msg .. " (Group " .. subgroup .. ")"
+            groupNum = tostring(subgroup)
         else
             Debug("Target in raid but no subgroup detected.")
         end
     else
         Debug("Target not in raid (no group info added).")
     end
+
+    -- Replace variables in template
+    local msg = template
+    msg = string.gsub(msg, "{name}", n)
+    msg = string.gsub(msg, "{class}", c)
+    msg = string.gsub(msg, "{group}", groupNum)
     local channel = (IsInInstance() and "INSTANCE_CHAT") or "RAID"
     local pindex = UnitInRaid("player")
     if pindex then

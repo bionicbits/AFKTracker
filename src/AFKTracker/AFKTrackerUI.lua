@@ -23,6 +23,9 @@ local DEFAULT_BATTLE_POSITION = {
     yOfs = 0
 }
 
+-- Default announce message
+local DEFAULT_ANNOUNCE_MESSAGE = "REPORT: {name} the {class} is AFK! (Group {group})"
+
 -- Initialize saved variables for UI
 local function InitializeSavedVariables()
     AFKTrackerDB = AFKTrackerDB or {}
@@ -40,7 +43,8 @@ local function InitializeSavedVariables()
         redeemThreshold = 1,
         historyExpireHours = 48,
         debug = false,
-        showBattleUI = true
+        showBattleUI = true,
+        announceMessage = DEFAULT_ANNOUNCE_MESSAGE
     }
     for k, v in pairs(defaults) do
         if AFKTrackerDB.config[k] == nil then
@@ -161,39 +165,82 @@ local function GetTrackingStats()
 end
 
 -- Create checkbox for debug option
-local function CreateDebugCheckbox(parent, yOffset)
-    local checkbox = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-    checkbox:SetPoint("TOPLEFT", 20, yOffset)
+local function CreateAnnounceMessageInput(parent, yOffset)
+    -- Create container frame
+    local container = CreateFrame("Frame", nil, parent)
+    container:SetPoint("TOPLEFT", 20, yOffset)
+    container:SetPoint("RIGHT", -20, 0)
+    container:SetHeight(60)
 
-    local label = checkbox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("LEFT", checkbox, "RIGHT", 5, 0)
-    label:SetText("Enable Debug Messages")
+    -- Label
+    local label = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("TOPLEFT", 0, 0)
+    label:SetText("Announce Message Template:")
     label:SetTextColor(1, 0.84, 0) -- Gold color
 
-    -- Set initial state
-    checkbox:SetChecked(AFKTrackerDB.config.debug)
+    -- Create scrolling edit box container
+    local scrollFrame = CreateFrame("ScrollFrame", nil, container, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -5)
+    scrollFrame:SetPoint("RIGHT", -25, 0)
+    scrollFrame:SetHeight(35)
 
-    -- Handle clicks
-    checkbox:SetScript("OnClick", function(self)
-        AFKTrackerDB.config.debug = self:GetChecked() and true or false
-        if AFKTrackerDB.config.debug then
-            print("|cFF4A90E2[AFK Tracker]|r Debug messages enabled")
-        else
-            print("|cFF4A90E2[AFK Tracker]|r Debug messages disabled")
+    -- Background for the input
+    local bg = scrollFrame:CreateTexture(nil, "BACKGROUND")
+    bg:SetPoint("TOPLEFT", -5, 5)
+    bg:SetPoint("BOTTOMRIGHT", 20, -5)
+    bg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
+
+    -- Create the edit box
+    local editBox = CreateFrame("EditBox", nil, scrollFrame)
+    editBox:SetMultiLine(true)
+    editBox:SetMaxLetters(200)
+    editBox:SetFontObject("GameFontHighlight")
+    editBox:SetWidth(scrollFrame:GetWidth() - 30)
+    editBox:SetAutoFocus(false)
+    editBox:SetText(AFKTrackerDB.config.announceMessage or DEFAULT_ANNOUNCE_MESSAGE)
+
+    scrollFrame:SetScrollChild(editBox)
+
+    -- Save on focus lost
+    editBox:SetScript("OnEditFocusLost", function(self)
+        local text = self:GetText()
+        if text and text ~= "" then
+            AFKTrackerDB.config.announceMessage = text
+            print("|cFF4A90E2[AFK Tracker]|r Announce message updated")
         end
     end)
 
-    -- Tooltip
-    checkbox:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Enable debug messages for troubleshooting", nil, nil, nil, nil, true)
-        GameTooltip:Show()
+    -- Save on Enter
+    editBox:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
     end)
-    checkbox:SetScript("OnLeave", function(self)
+
+    -- Tooltip
+    local function SetTooltip(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Announce Message Template", 1, 0.84, 0)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Available variables:", 1, 1, 1)
+        GameTooltip:AddLine("{name} - Player's name", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine("{class} - Player's class", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine("{group} - Raid group number (blank if not in raid)", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Example: REPORT: {name} the {class} is AFK! (Group {group})", 0.5, 1, 0.5)
+        GameTooltip:Show()
+    end
+
+    editBox:SetScript("OnEnter", SetTooltip)
+    scrollFrame:SetScript("OnEnter", SetTooltip)
+
+    editBox:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
+    end)
+    scrollFrame:SetScript("OnLeave", function(self)
         GameTooltip:Hide()
     end)
 
-    return checkbox
+    container.editBox = editBox
+    return container
 end
 
 -- Create checkbox for battle UI option with reset button
@@ -443,6 +490,7 @@ local function CreateBattleFrame()
         end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:SetText("Announce target as AFK")
+        GameTooltip:AddLine("Requires: You must be in a raid", 1, 0.5, 0.5)
         GameTooltip:Show()
     end)
     f.announceBtn:SetScript("OnLeave", function(self)
@@ -458,10 +506,11 @@ local function CreateBattleFrame()
 
     -- Function to update the announce button's state
     function f:UpdateAnnounceButtonState()
+        local playerInRaid = UnitInRaid("player")
         local targetExists = UnitExists("target") and UnitIsPlayer("target") and not UnitIsUnit("player", "target")
         local targetInGroup = targetExists and (UnitInRaid("target") or UnitInParty("target"))
 
-        if targetExists and targetInGroup then
+        if playerInRaid and targetExists and targetInGroup then
             self.announceBtn:Enable()
             self.announceBtn.bg:SetColorTexture(0.2, 0.2, 0.2, 1)
             self.announceBtn:SetNormalFontObject("GameFontNormalSmall")
@@ -497,7 +546,7 @@ local function CreateSettingsFrame()
 
     -- Main frame
     local f = CreateFrame("Frame", "AFKTrackerSettingsFrame", UIParent)
-    f:SetSize(400, 420)
+    f:SetSize(400, 460)
     f:SetPoint(AFKTrackerDB.ui.position.point, UIParent, AFKTrackerDB.ui.position.relativePoint,
         AFKTrackerDB.ui.position.xOfs, AFKTrackerDB.ui.position.yOfs)
     f:SetFrameStrata("DIALOG")
@@ -625,11 +674,11 @@ local function CreateSettingsFrame()
     inputs.historyExpireHours = CreateConfigOption(content, "History Expire (hrs)", "historyExpireHours", -210,
         "Hours after which AFK records expire", UpdateStatusText)
 
-    -- Debug checkbox instead of input
-    inputs.debug = CreateDebugCheckbox(content, -250)
+    -- Announce message input instead of debug checkbox
+    inputs.announceMessage = CreateAnnounceMessageInput(content, -250)
 
     -- Battle UI checkbox
-    inputs.showBattleUI = CreateBattleUICheckbox(content, -280)
+    inputs.showBattleUI = CreateBattleUICheckbox(content, -310)
 
     -- Create custom button function
     local function CreateButton(parent, text, width, height)
@@ -673,14 +722,17 @@ local function CreateSettingsFrame()
             seenThreshold = 2,
             redeemThreshold = 1,
             historyExpireHours = 48,
-            debug = false
+            debug = false,
+            announceMessage = DEFAULT_ANNOUNCE_MESSAGE
         }
 
         for key, value in pairs(defaults) do
             AFKTrackerDB.config[key] = value
             if inputs[key] then
                 if key == "debug" then
-                    inputs[key]:SetChecked(value)
+                    -- Debug is no longer in UI, skip
+                elseif key == "announceMessage" then
+                    inputs[key].editBox:SetText(value)
                 else
                     inputs[key]:SetText(tostring(value))
                 end

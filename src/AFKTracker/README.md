@@ -51,13 +51,13 @@ No additional libraries or addons required. Compatible with WoW Classic Era (tes
 
 - `/afkt ui` or `/afkt settings`: Opens the graphical settings window for easy configuration.
 - `/afkt battleui [show|hide|reset]`: Manually show, hide, or reset the position of the battle UI (auto-shows in AV if enabled).
-- `/afkt announce`: Announces the targeted player as AFK to raid/instance chat (includes class if applicable). Requires target.
+- `/afkt announce`: Announces the targeted player as AFK to raid/instance chat. Requires you to be in a raid and have a target.
 - `/afkt list [limit] [bg]`: Lists potential AFKers from the last X hours (includes class when in BG), sorted by times seen and total honor. Optional `limit` for top N results; `bg` to print to instance chat (if in AV).
 - `/afkt history`: Announces the targeted player's AFK history/evidence to instance/raid chat. Requires target.
 - `/afkt clear`: Clears all recorded data.
 - `/afkt config`: Shows current configuration values and descriptions.
 - `/afkt config get <key>`: Gets the value and description of a specific config key (e.g., `deathThreshold`).
-- `/afkt config set <key> <value>`: Sets a config key to a new value (e.g., `/afkt config set honorThreshold 1500`). Note: Debug mode can now be toggled via checkbox in the UI.
+- `/afkt config set <key> <value>`: Sets a config key to a new value (e.g., `/afkt config set honorThreshold 1500`).
 
 Available config keys (can be configured via UI or commands):
 - `deathThreshold`: Number of deaths below which a player is considered AFK (default: 2).
@@ -65,7 +65,7 @@ Available config keys (can be configured via UI or commands):
 - `seenThreshold`: Minimum number of times seen AFK to include in lists or announcements (default: 2).
 - `redeemThreshold`: Number of honorable kills in a single match to remove from tracking (default: 1).
 - `historyExpireHours`: Hours after which AFK records expire (default: 48).
-- `debug`: Enable or disable debug messages (default: false). Can be toggled via checkbox in the UI or set via command.
+- `debug`: Enable or disable debug messages (default: false). Can only be set via command line.
 
 ## Configuration Examples
 
@@ -78,10 +78,14 @@ Configuration can be done via the graphical UI (`/afkt ui`) or through commands:
 
 The UI provides:
 - Input fields for all numeric thresholds
-- Checkbox for debug mode toggle
+- Customizable announce message template with variables:
+  - `{name}` - Player's name
+  - `{class}` - Player's class
+  - `{group}` - Raid group number (blank if not in raid)
+  - Default: `REPORT: {name} the {class} is AFK! (Group {group})`
 - Checkbox to enable/disable Battle UI auto-show in AV
 - Reset button (next to Battle UI checkbox) to restore default battle UI position
-- Reset Defaults button to restore original settings
+- Reset Defaults button to restore original settings (including announce message)
 - Clear History button to remove all tracking records
 - Draggable window that remembers its position
 
@@ -92,9 +96,9 @@ The Battle UI is a compact interface designed for use during Alterac Valley batt
 ### Features
 - **Auto-shows in AV**: Automatically appears when entering Alterac Valley (can be disabled)
 - **Compact Design**: Small 140x70 pixel frame that won't interfere with combat
-- **Quick Actions**: 
+- **Quick Actions**:
   - "List AFK" button - Lists AFKers in battleground chat
-  - "Announce" button - Announces targeted player as AFK
+  - "Announce" button - Announces targeted player as AFK (requires being in a raid)
 - **Settings Access**: Gear icon to open main settings panel
 - **Moveable**: Click and drag to position anywhere on screen
 - **Position Memory**: Remembers where you placed it between sessions
