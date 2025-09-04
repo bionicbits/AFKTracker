@@ -2,12 +2,12 @@
 
 **AFKTracker** is a lightweight World of Warcraft Classic Era addon designed to help identify and track potential AFK (Away From Keyboard) players in Alterac Valley (AV) battlegrounds. It monitors player performance at the end of each AV match, recording those who appear to be leeching honor without contributing (e.g., 0 honorable kills, minimal deaths, no objectives completed, but still earning honor). The addon provides tools to list suspects, announce histories, and manage a local database of records. It's particularly useful for raid leaders or groups frustrated with AFK farmers in AV.
 
-This addon is inspired by community efforts to promote fair play in battlegrounds. All data is stored locally per character and expires after a configurable time (default: 24 hours).
+This addon is inspired by community efforts to promote fair play in battlegrounds. All data is stored locally per character and expires after a configurable time (default: 48 hours).
 
 ## Features
 
 - **Automatic Tracking**: At the end of each AV match, scans the scoreboard for players meeting AFK criteria (0 HKs, low deaths, sufficient honor gained, no objectives).
-- **Redemption System**: If a tracked player achieves a configurable number of honorable kills (default: 10) in a future match, they are automatically removed from the tracking list.
+- **Redemption System**: If a tracked player achieves a configurable number of honorable kills (default: 1) in a future match, they are automatically removed from the tracking list.
 - **Aggregated Statistics**: View averages for HKs, deaths, and total honor across recorded matches.
 - **Graphical UI**: User-friendly settings window accessible via `/afkt ui` for easy configuration.
 - **Battle UI**: Compact, moveable interface that auto-shows in AV with quick access buttons for listing AFKers and announcing targets.
@@ -28,8 +28,8 @@ This addon is inspired by community efforts to promote fair play in battleground
      - Honor Gained >= `honorThreshold` (default: 1386)
      - Objectives Completed == 0 (towers, graves, mines, leaders, etc.)
    - If criteria are met, the player is recorded with their name, timestamp, HKs, deaths, and honor gained.
-4. **Redemption Check**: During the same scan, if any player (tracked or not) achieves >= `redeemThreshold` HKs (default: 10), all their prior records are removed from the database.
-5. **Data Expiration**: Records older than `historyExpireHours` (default: 24) are automatically purged on login or when querying.
+4. **Redemption Check**: During the same scan, if any player (tracked or not) achieves >= `redeemThreshold` HKs (default: 1), all their prior records are removed from the database.
+5. **Data Expiration**: Records older than `historyExpireHours` (default: 48) are automatically purged on login or when querying.
 6. **Queries and Announcements**:
    - Use `/afkt list` to view aggregated stats for tracked players (filtered by `seenThreshold` for relevance).
    - Target a player and use `/afkt history` to announce their AFK evidence to chat.
@@ -51,8 +51,8 @@ No additional libraries or addons required. Compatible with WoW Classic Era (tes
 
 - `/afkt ui` or `/afkt settings`: Opens the graphical settings window for easy configuration.
 - `/afkt battleui [show|hide|reset]`: Manually show, hide, or reset the position of the battle UI (auto-shows in AV if enabled).
-- `/afkt announce`: Announces the targeted player as AFK to raid/instance chat (includes class and group if applicable). Requires target.
-- `/afkt list [limit] [bg]`: Lists potential AFKers from the last X hours, sorted by times seen and total honor. Optional `limit` for top N results; `bg` to print to instance chat (if in AV).
+- `/afkt announce`: Announces the targeted player as AFK to raid/instance chat (includes class if applicable). Requires target.
+- `/afkt list [limit] [bg]`: Lists potential AFKers from the last X hours (includes class when in BG), sorted by times seen and total honor. Optional `limit` for top N results; `bg` to print to instance chat (if in AV).
 - `/afkt history`: Announces the targeted player's AFK history/evidence to instance/raid chat. Requires target.
 - `/afkt clear`: Clears all recorded data.
 - `/afkt config`: Shows current configuration values and descriptions.
@@ -64,7 +64,7 @@ Available config keys (can be configured via UI or commands):
 - `honorThreshold`: Minimum honor gained to consider a player for AFK tracking (default: 1386).
 - `seenThreshold`: Minimum number of times seen AFK to include in lists or announcements (default: 2).
 - `redeemThreshold`: Number of honorable kills in a single match to remove from tracking (default: 1).
-- `historyExpireHours`: Hours after which AFK records expire (default: 24).
+- `historyExpireHours`: Hours after which AFK records expire (default: 48).
 - `debug`: Enable or disable debug messages (default: false). Can be toggled via checkbox in the UI or set via command.
 
 ## Configuration Examples

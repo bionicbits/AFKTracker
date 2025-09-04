@@ -38,7 +38,7 @@ local function InitializeSavedVariables()
         honorThreshold = 1386,
         seenThreshold = 2,
         redeemThreshold = 1,
-        historyExpireHours = 24,
+        historyExpireHours = 48,
         debug = false,
         showBattleUI = true
     }
@@ -155,7 +155,7 @@ local function GetTrackingStats()
         end
     end
 
-    local expireHours = (AFKTrackerDB and AFKTrackerDB.config and AFKTrackerDB.config.historyExpireHours) or 24
+    local expireHours = (AFKTrackerDB and AFKTrackerDB.config and AFKTrackerDB.config.historyExpireHours) or 48
 
     return playerCount, expireHours
 end
@@ -672,7 +672,7 @@ local function CreateSettingsFrame()
             honorThreshold = 1386,
             seenThreshold = 2,
             redeemThreshold = 1,
-            historyExpireHours = 24,
+            historyExpireHours = 48,
             debug = false
         }
 

@@ -36,7 +36,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             honorThreshold = 1386,
             seenThreshold = 2,
             redeemThreshold = 1,
-            historyExpireHours = 24,
+            historyExpireHours = 48,
             debug = false
         }
         for k, v in pairs(defaults) do
@@ -167,8 +167,12 @@ local function GetCurrentGroupMembers()
         local unit = prefix .. i
         local name = UnitName(unit)
         local level = UnitLevel(unit)
+        local _, class = UnitClass(unit)
         if name then
-            members[name] = level
+            members[name] = {
+                level = level,
+                class = class or "UNKNOWN"
+            }
         end
     end
     return members
@@ -199,10 +203,14 @@ local function ListAFKers(limit, useBG)
     local currentMembers = inBG and GetCurrentGroupMembers() or nil
     local sortedPlayers = {}
     for name in pairs(players) do
-        if not currentMembers or (currentMembers[name] and currentMembers[name] >= 60) then
+        if not currentMembers or (currentMembers[name] and currentMembers[name].level >= 60) then
             local aggs = GetAggregates(name, now)
             if aggs and aggs.afk_count >= AFKTrackerDB.config.seenThreshold then
-                table.insert(sortedPlayers, { name = name, aggs = aggs })
+                local playerData = { name = name, aggs = aggs }
+                if currentMembers and currentMembers[name] then
+                    playerData.class = currentMembers[name].class
+                end
+                table.insert(sortedPlayers, playerData)
             end
         end
     end
@@ -228,8 +236,13 @@ local function ListAFKers(limit, useBG)
     end
     for _, entry in ipairs(sortedPlayers) do
         local aggs = entry.aggs
+        local classInfo = ""
+        if entry.class then
+            classInfo = " [" .. entry.class .. "]"
+        end
         local msg_plain = "- " ..
             entry.name ..
+            classInfo ..
             ": Seen " ..
             aggs.times_seen ..
             " times, avg HKs: " ..
@@ -238,9 +251,37 @@ local function ListAFKers(limit, useBG)
         if channel then
             SendChatMessage(msg_plain, channel)
         else
-            local msg_colored = "- |cFF00FF00" ..
+            local classColor = ""
+            if entry.class then
+                -- Class colors for better visibility
+                local classColors = {
+                    WARRIOR = "|cFFC79C6E",
+                    PALADIN = "|cFFF58CBA",
+                    HUNTER = "|cFFABD473",
+                    ROGUE = "|cFFFFF569",
+                    PRIEST = "|cFFFFFFFF",
+                    DEATHKNIGHT = "|cFFC41F3B",
+                    SHAMAN = "|cFF0070DE",
+                    MAGE = "|cFF69CCF0",
+                    WARLOCK = "|cFF9482C9",
+                    MONK = "|cFF00FF96",
+                    DRUID = "|cFFFF7D0A",
+                    DEMONHUNTER = "|cFFA330C9"
+                }
+                classColor = classColors[entry.class] or "|cFF00FF00"
+            else
+                classColor = "|cFF00FF00"
+            end
+            local classColored = ""
+            if entry.class then
+                classColored = " [" .. classColor .. entry.class .. "|r]"
+            end
+            local msg_colored = "- " ..
+                classColor ..
                 entry.name ..
-                "|r: Seen |cFF4A90E2" ..
+                "|r" ..
+                classColored ..
+                ": Seen |cFF4A90E2" ..
                 aggs.times_seen ..
                 "|r times, avg HKs: |cFF4A90E2" ..
                 aggs.avg_hks ..
@@ -464,7 +505,7 @@ local function AFKTHandler(msg)
         print(" - |cFFFFD700config|r [list|get <key>|set <key> <value>]: Manage configuration")
         print(" - |cFFFFD700ui|r or |cFFFFD700settings|r: Toggle the settings window")
         print(
-        " - |cFFFFD700battleui|r [show|hide|reset]: Show, hide, or reset position of the battle UI (auto-shows in AV if enabled)")
+            " - |cFFFFD700battleui|r [show|hide|reset]: Show, hide, or reset position of the battle UI (auto-shows in AV if enabled)")
     end
 end
 
